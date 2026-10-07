@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мини-игры: Змейка, Провода и Геометрия Раннер</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #080c14;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            padding: 15px;
+        }
+
+        /* HEADER & TIMER */
+        .header-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #38bdf8;
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.6);
+            text-align: center;
+        }
+
+        .timer-box {
+            background: #0f172a;
+            border: 2px solid #ef4444;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #f87171;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .timer-box.warning {
+            animation: blink 0.8s infinite alternate;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.6; transform: scale(1.05); }
+        }
+
+        /* OVERLAY SCREEN */
+        .overlay-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 12, 20, 0.92);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.4s ease, visibility 0.4s;
+        }
+
+        .overlay-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .start-btn-prompt {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            border: 2px solid #38bdf8;
+            color: #ffffff;
+            padding: 16px 36px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 50px;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+            margin-top: 25px;
+            animation: pulse-space 1.5s infinite;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        @keyframes pulse-space {
+            0% { transform: scale(1); box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+            50% { transform: scale(1.06); box-shadow: 0 0 30px rgba(56, 189, 248, 0.8); }
+            100% { transform: scale(1); box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+        }
+
+        .game-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            min-height: 520px;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* CARDS */
+        .card {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 420px;
+            position: relative;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #snake-card {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.25);
+            z-index: 3;
+        }
+
+        #wires-card {
+            border-color: #f59e0b;
+            opacity: 0.45;
+            filter: brightness(0.4) blur(1px);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        #dash-card {
+            border-color: #a855f7;
+            opacity: 0.45;
+            filter: brightness(0.4) blur(1px);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .card.fade-out {
+            opacity: 0 !important;
+            transform: scale(0.6) translateY(-60px) !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+        }
+
+        .card.active-card {
+            opacity: 1 !important;
+            filter: brightness(1) blur(0px) !important;
+            pointer-events: auto !important;
+            transform: scale(1.05);
+        }
+
+        /* LOCKED OVERLAY */
+        .lock-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.94);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+            z-index: 10;
+            transition: opacity 0.5s ease, visibility 0.5s;
+        }
+
+        .lock-icon {
+            width: 64px;
+            height: 64px;
+            fill: #f59e0b;
+            filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.7));
+        }
+
+        .lock-text {
+            margin-top: 15px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            text-align: center;
+            padding: 0 20px;
+            line-height: 1.4;
+        }
+
+        /* CARD HEADERS */
+        .card-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-snake { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid #0ea5e9; }
+        .badge-wires { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+        .badge-dash { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; }
+
+        canvas {
+            background-color: #0b1329;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            display: block;
+        }
+
+        .controls-hint {
+            margin-top: 12px;
+            font-size: 0.82rem;
+            color: #94a3b8;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        /* WIRES GAME */
+        #wires-board {
+            width: 380px;
+            height: 340px;
+            background: #0b1329;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wire-node {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            box-shadow: 0 0 12px currentColor;
+            z-index: 5;
+            border: 2px solid #fff;
+            transition: transform 0.2s;
+        }
+
+        .wire-node:hover {
+            transform: scale(1.15);
+        }
+
+        svg#wires-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .status-msg {
+            margin-top: 10px;
+            font-weight: bold;
+            height: 24px;
+            font-size: 0.95rem;
+        }
+
+        /* VICTORY OVERLAY / CODE 4141 */
+        .victory-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(6, 18, 36, 0.96);
+            backdrop-filter: blur(10px);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s ease, visibility 0.6s;
+        }
+
+        .victory-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .code-title {
+            font-size: 1.8rem;
+            color: #a7f3d0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .code-display {
+            font-size: 4.5rem;
+            font-weight: 900;
+            color: #10b981;
+            text-shadow: 0 0 30px rgba(16, 185, 129, 0.8), 0 0 60px rgba(16, 185, 129, 0.4);
+            letter-spacing: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 15px 40px;
+            border-radius: 20px;
+            border: 3px solid #10b981;
+            margin: 20px 0;
+            animation: pulse-code 2s infinite alternate;
+        }
+
+        @keyframes pulse-code {
+            0% { transform: scale(1); box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); }
+            100% { transform: scale(1.05); box-shadow: 0 0 50px rgba(16, 185, 129, 0.9); }
+        }
+
+        .restart-prompt {
+            margin-top: 25px;
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY START / GAME OVER -->
+    <div class="overlay-screen" id="start-overlay">
+        <h1 style="font-size: 2.3rem; margin-bottom: 15px;" id="overlay-title">МИССИЯ: ТРИ ИСПЫТАНИЯ</h1>
+        <p style="font-size: 1.05rem; color: #94a3b8; max-width: 540px; line-height: 1.6;" id="overlay-desc">
+            1. Змейка-Лабиринт (3 уровня)<br>
+            2. Соединение Проводов<br>
+            3. Геометрия Раннер (Бег 30 сек)<br><br>
+            У вас есть всего <b>3 минуты</b> на прохождение всех испытаний!
+        </p>
+        <div class="start-btn-prompt" id="start-btn">
+            ⌨️ Нажмите <b>SPACE (Пробел)</b> чтобы начать
+        </div>
+    </div>
+
+    <!-- VICTORY SCREEN -->
+    <div class="victory-modal" id="victory-modal">
+        <div class="code-title">🎉 Все 3 Испытания Пройдены! Доступ Разрешен:</div>
+        <div class="code-display">Код 4141</div>
+        <p class="restart-prompt">Нажмите <b>SPACE (Пробел)</b> для повторного прохождения</p>
+    </div>
+
+    <div class="header-container">
+        <h1>Энергетический Сектор</h1>
+        <div class="timer-box" id="timer-box">
+            <span>⏱️</span> <span id="timer-display">03:00</span>
+        </div>
+    </div>
+
+    <div class="game-container" id="main-container">
+        
+        <!-- ИГРА 1: ЗМЕЙКА -->
+        <div class="card active-card" id="snake-card">
+            <div class="card-header">
+                <span class="card-title" style="color: #38bdf8;">1. Змейка-Лабиринт</span>
+                <span class="badge badge-snake" id="snake-badge">Уровень <span id="level-val">1</span>/3</span>
+            </div>
+            <canvas id="snakeCanvas" width="380" height="340"></canvas>
+            <div class="controls-hint">
+                Управление: <b>WASD</b> / <b>Стрелки</b>.<br>
+                Хвост не исчезает. Проведите змейку от зеленого <b style="color: #10b981;">Входа</b> к красному <b style="color: #ef4444;">Выходу</b>.
+            </div>
+        </div>
+
+        <!-- ИГРА 2: ПРОВОДА -->
+        <div class="card" id="wires-card">
+            <div class="lock-overlay" id="wires-lock">
+                <svg class="lock-icon" id="wires-lock-svg" viewBox="0 0 24 24">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                </svg>
+                <div class="lock-text" id="wires-lock-text">Заблокировано!<br>Пройдите Змейку</div>
+            </div>
+
+            <div class="card-header">
+                <span class="card-title" style="color: #fbbf24;">2. Провода</span>
+                <span class="badge badge-wires" id="wires-badge">Заперто</span>
+            </div>
+            
+            <div id="wires-board">
+                <svg id="wires-svg"></svg>
+            </div>
+
+            <div class="status-msg" id="wires-status" style="color: #fbbf24;">Соедините одинаковые цвета</div>
+        </div>
+
+        <!-- ИГРА 3: ГЕОМЕТРИЯ РАННЕР -->
+        <div class="card" id="dash-card">
+            <div class="lock-overlay" id="dash-lock">
+                <svg class="lock-icon" id="dash-lock-svg" viewBox="0 0 24 24">
+                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                </svg>
+                <div class="lock-text" id="dash-lock-text">Заблокировано!<br>Пройдите Провода</div>
+            </div>
+
+            <div class="card-header">
+                <span class="card-title" style="color: #c084fc;">3. Геометрия Раннер</span>
+                <span class="badge badge-dash" id="dash-badge">Заперто</span>
+            </div>
+            <canvas id="dashCanvas" width="380" height="340"></canvas>
+            <div class="controls-hint">
+                Управление: <b>SPACE</b> / <b>Стрелка Вверх</b> / <b>Клик</b>.<br>
+                Прыгайте через блоки и шипы. Продержитесь 30 секунд и доберитесь до зеленого финиша!
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // ТАЙМЕР И СОСТОЯНИЯ
+        // ==========================================
+        let activeGamePhase = 1; // 1: Snake, 2: Wires, 3: Dash
+        let gameState = 'IDLE'; // IDLE, PLAYING, GAME_OVER, VICTORY
+        let totalTime = 180;
+        let timerInterval = null;
+
+        const timerDisplay = document.getElementById('timer-display');
+        const timerBox = document.getElementById('timer-box');
+        const startOverlay = document.getElementById('start-overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayDesc = document.getElementById('overlay-desc');
+        const victoryModal = document.getElementById('victory-modal');
+
+        function updateTimerUI() {
+            const mins = Math.floor(totalTime / 60);
+            const secs = totalTime % 60;
+            timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            if (totalTime <= 30) {
+                timerBox.classList.add('warning');
+            } else {
+                timerBox.classList.remove('warning');
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            totalTime = 180;
+            updateTimerUI();
+
+            timerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    totalTime--;
+                    updateTimerUI();
+                    if (totalTime <= 0) {
+                        gameOver("⏰ ВРЕМЯ ИСТЕКЛО!", "Вы не успели пройти все 3 игры за 3 минуты.");
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        // КЛИК ИЛИ SPACE ДЛЯ ЗАПУСКА
+        document.getElementById('start-btn').addEventListener('click', () => {
+            if (gameState === 'IDLE' || gameState === 'GAME_OVER' || gameState === 'VICTORY') {
+                resetAndStartAll();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                if (gameState === 'IDLE' || gameState === 'GAME_OVER' || gameState === 'VICTORY') {
+                    e.preventDefault();
+                    resetAndStartAll();
+                } else if (activeGamePhase === 3 && gameState === 'PLAYING') {
+                    e.preventDefault();
+                    triggerDashJump();
+                }
+            }
+        });
+
+        function resetAndStartAll() {
+            gameState = 'PLAYING';
+            activeGamePhase = 1;
+
+            startOverlay.classList.add('hidden');
+            victoryModal.classList.remove('show');
+
+            // Карточки
+            const snakeCard = document.getElementById('snake-card');
+            const wiresCard = document.getElementById('wires-card');
+            const dashCard = document.getElementById('dash-card');
+
+            snakeCard.className = 'card active-card';
+            wiresCard.className = 'card';
+            dashCard.className = 'card';
+
+            document.getElementById('wires-lock').style.opacity = '1';
+            document.getElementById('wires-lock').style.visibility = 'visible';
+            document.getElementById('wires-badge').textContent = 'Заперто';
+
+            document.getElementById('dash-lock').style.opacity = '1';
+            document.getElementById('dash-lock').style.visibility = 'visible';
+            document.getElementById('dash-badge').textContent = 'Заперто';
+
+            // Сброс Змейки
+            currentLevel = 1;
+            loadLevel(currentLevel);
+
+            startTimer();
+
+            if (!animFrameId) {
+                animFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function gameOver(title, desc) {
+            gameState = 'GAME_OVER';
+            stopTimer();
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+
+            overlayTitle.textContent = title;
+            overlayTitle.style.color = "#ef4444";
+            overlayDesc.innerHTML = desc + "<br><br>Нажмите <b>SPACE</b> для новой попытки.";
+            startOverlay.classList.remove('hidden');
+        }
+
+
+        // ==========================================
+        // 1. ИГРА "ЗМЕЙКА-ЛАБИРИНТ"
+        // ==========================================
+        const snakeCanvas = document.getElementById('snakeCanvas');
+        const sCtx = snakeCanvas.getContext('2d');
+        const levelVal = document.getElementById('level-val');
+
+        const S_GRID = 19;
+        let currentLevel = 1;
+        let headPos = { x: 30, y: 30 };
+        let moveDir = { x: 1, y: 0 };
+        let nextDir = { x: 1, y: 0 };
+        let speed = 3.2;
+
+        let visitedGridCells = [];
+        let lastVisitedCell = null;
+        let walls = [];
+        let startPos = { x: 1, y: 1 };
+        let exitPos = { x: 18, y: 16 };
+        let animFrameId = null;
+
+        const levels = [
+            {
+                start: { x: 1, y: 1 },
+                exit: { x: 18, y: 15 },
+                walls: [
+                    { x: 5, y: 0, w: 1, h: 13 },
+                    { x: 10, y: 4, w: 1, h: 14 },
+                    { x: 15, y: 0, w: 1, h: 13 }
+                ]
+            },
+            {
+                start: { x: 1, y: 15 },
+                exit: { x: 18, y: 1 },
+                walls: [
+                    { x: 0, y: 12, w: 16, h: 1 },
+                    { x: 4, y: 8, w: 16, h: 1 },
+                    { x: 0, y: 4, w: 16, h: 1 },
+                    { x: 10, y: 13, w: 1, h: 2 }
+                ]
+            },
+            {
+                start: { x: 1, y: 1 },
+                exit: { x: 18, y: 8 },
+                walls: [
+                    { x: 4, y: 0, w: 1, h: 13 },
+                    { x: 8, y: 4, w: 1, h: 14 },
+                    { x: 12, y: 0, w: 1, h: 13 },
+                    { x: 16, y: 4, w: 1, h: 14 }
+                ]
+            }
+        ];
+
+        function loadLevel(lvlNum) {
+            const config = levels[lvlNum - 1];
+            startPos = config.start;
+            exitPos = config.exit;
+
+            walls = [];
+            config.walls.forEach(w => {
+                for (let x = w.x; x < w.x + w.w; x++) {
+                    for (let y = w.y; y < w.y + w.h; y++) {
+                        walls.push({ x, y });
+                    }
+                }
+            });
+
+            headPos = { 
+                x: startPos.x * S_GRID + S_GRID / 2, 
+                y: startPos.y * S_GRID + S_GRID / 2 
+            };
+            
+            moveDir = { x: 1, y: 0 };
+            nextDir = { x: 1, y: 0 };
+            visitedGridCells = [{ x: startPos.x, y: startPos.y }];
+            lastVisitedCell = { x: startPos.x, y: startPos.y };
+
+            levelVal.textContent = lvlNum;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING' || activeGamePhase !== 1) return;
+
+            let newDir = null;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') newDir = { x: 0, y: -1 };
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') newDir = { x: 0, y: 1 };
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') newDir = { x: -1, y: 0 };
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') newDir = { x: 1, y: 0 };
+
+            if (newDir) {
+                if (newDir.x !== -moveDir.x || newDir.y !== -moveDir.y) {
+                    nextDir = newDir;
+                }
+            }
+        });
+
+        function updateSnakeSmooth() {
+            moveDir = nextDir;
+            headPos.x += moveDir.x * speed;
+            headPos.y += moveDir.y * speed;
+
+            const currentCellX = Math.floor(headPos.x / S_GRID);
+            const currentCellY = Math.floor(headPos.y / S_GRID);
+
+            if (headPos.x - 7 < 0 || headPos.x + 7 > snakeCanvas.width || 
+                headPos.y - 7 < 0 || headPos.y + 7 > snakeCanvas.height) {
+                loadLevel(currentLevel);
+                return;
+            }
+
+            if (walls.some(w => w.x === currentCellX && w.y === currentCellY)) {
+                loadLevel(currentLevel);
+                return;
+            }
+
+            if (!lastVisitedCell || lastVisitedCell.x !== currentCellX || lastVisitedCell.y !== currentCellY) {
+                const selfCollision = visitedGridCells.some(cell => cell.x === currentCellX && cell.y === currentCellY);
+                if (selfCollision) {
+                    loadLevel(currentLevel);
+                    return;
+                }
+
+                const newCell = { x: currentCellX, y: currentCellY };
+                visitedGridCells.push(newCell);
+                lastVisitedCell = newCell;
+            }
+
+            if (currentCellX === exitPos.x && currentCellY === exitPos.y) {
+                if (currentLevel < 3) {
+                    currentLevel++;
+                    loadLevel(currentLevel);
+                } else {
+                    completeSnakeGame();
+                }
+            }
+        }
+
+        function renderSnake() {
+            sCtx.fillStyle = '#0b1329';
+            sCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+            sCtx.strokeStyle = '#1e293b';
+            sCtx.lineWidth = 1;
+            for (let i = 0; i < snakeCanvas.width; i += S_GRID) {
+                sCtx.beginPath(); sCtx.moveTo(i, 0); sCtx.lineTo(i, snakeCanvas.height); sCtx.stroke();
+            }
+            for (let j = 0; j < snakeCanvas.height; j += S_GRID) {
+                sCtx.beginPath(); sCtx.moveTo(0, j); sCtx.lineTo(snakeCanvas.width, j); sCtx.stroke();
+            }
+
+            sCtx.fillStyle = '#475569';
+            walls.forEach(w => {
+                sCtx.fillRect(w.x * S_GRID + 1, w.y * S_GRID + 1, S_GRID - 2, S_GRID - 2);
+            });
+
+            sCtx.fillStyle = '#10b981';
+            sCtx.fillRect(startPos.x * S_GRID + 2, startPos.y * S_GRID + 2, S_GRID - 4, S_GRID - 4);
+
+            sCtx.fillStyle = '#ef4444';
+            sCtx.fillRect(exitPos.x * S_GRID + 2, exitPos.y * S_GRID + 2, S_GRID - 4, S_GRID - 4);
+
+            visitedGridCells.forEach((cell, idx) => {
+                sCtx.fillStyle = (idx % 2 === 0) ? '#0284c7' : '#0369a1';
+                sCtx.fillRect(cell.x * S_GRID + 1, cell.y * S_GRID + 1, S_GRID - 2, S_GRID - 2);
+            });
+
+            sCtx.fillStyle = '#38bdf8';
+            sCtx.beginPath();
+            sCtx.arc(headPos.x, headPos.y, S_GRID / 2 - 2, 0, Math.PI * 2);
+            sCtx.fill();
+        }
+
+
+        // ==========================================
+        // 2. ПЕРЕХОД К ПРОВОДАМ
+        // ==========================================
+        function completeSnakeGame() {
+            activeGamePhase = 2;
+
+            document.getElementById('snake-card').classList.add('fade-out');
+            
+            const wiresCard = document.getElementById('wires-card');
+            wiresCard.classList.add('active-card');
+
+            document.getElementById('wires-lock').style.opacity = '0';
+            document.getElementById('wires-lock').style.visibility = 'hidden';
+            document.getElementById('wires-badge').textContent = 'АКТИВНО';
+
+            initWiresGame();
+        }
+
+
+        // ==========================================
+        // 3. ИГРА "ПРОВОДА"
+        // ==========================================
+        const colors = [
+            { id: 'red', code: '#ef4444' },
+            { id: 'blue', code: '#3b82f6' },
+            { id: 'yellow', code: '#eab308' },
+            { id: 'green', code: '#22c55e' }
+        ];
+
+        let connections = [];
+        let activeWire = null;
+
+        function initWiresGame() {
+            const board = document.getElementById('wires-board');
+            board.querySelectorAll('.wire-node').forEach(n => n.remove());
+            document.getElementById('wires-svg').innerHTML = '';
+            connections = [];
+
+            let leftColors = [...colors];
+            let rightColors = [...colors].sort(() => Math.random() - 0.5);
+
+            leftColors.forEach((colorObj, idx) => {
+                const node = document.createElement('div');
+                node.className = 'wire-node';
+                node.style.backgroundColor = colorObj.code;
+                node.style.left = '30px';
+                node.style.top = `${40 + idx * 75}px`;
+                node.dataset.color = colorObj.id;
+                node.dataset.side = 'left';
+                node.dataset.x = 43;
+                node.dataset.y = 53 + idx * 75;
+                board.appendChild(node);
+
+                node.addEventListener('mousedown', (e) => startDragWire(e, node, colorObj));
+            });
+
+            rightColors.forEach((colorObj, idx) => {
+                const node = document.createElement('div');
+                node.className = 'wire-node';
+                node.style.backgroundColor = colorObj.code;
+                node.style.right = '30px';
+                node.style.top = `${40 + idx * 75}px`;
+                node.dataset.color = colorObj.id;
+                node.dataset.side = 'right';
+                node.dataset.x = 337;
+                node.dataset.y = 53 + idx * 75;
+                board.appendChild(node);
+
+                node.addEventListener('mouseup', (e) => endDragWire(e, node));
+            });
+
+            board.addEventListener('mousemove', drawActiveWire);
+            window.addEventListener('mouseup', () => {
+                if (activeWire) {
+                    activeWire.line.remove();
+                    activeWire = null;
+                }
+            });
+        }
+
+        function startDragWire(e, node, colorObj) {
+            if (node.dataset.connected === 'true' || gameState !== 'PLAYING' || activeGamePhase !== 2) return;
+
+            const svg = document.getElementById('wires-svg');
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+
+            line.setAttribute('x1', node.dataset.x);
+            line.setAttribute('y1', node.dataset.y);
+            line.setAttribute('x2', node.dataset.x);
+            line.setAttribute('y2', node.dataset.y);
+            line.setAttribute('stroke', colorObj.code);
+            line.setAttribute('stroke-width', '7');
+            line.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(line);
+
+            activeWire = { line, color: colorObj.id, startNode: node };
+        }
+
+        function drawActiveWire(e) {
+            if (!activeWire) return;
+            const board = document.getElementById('wires-board').getBoundingClientRect();
+            activeWire.line.setAttribute('x2', e.clientX - board.left);
+            activeWire.line.setAttribute('y2', e.clientY - board.top);
+        }
+
+        function endDragWire(e, node) {
+            if (!activeWire) return;
+
+            if (node.dataset.side === 'right' && node.dataset.color === activeWire.color) {
+                activeWire.line.setAttribute('x2', node.dataset.x);
+                activeWire.line.setAttribute('y2', node.dataset.y);
+                activeWire.startNode.dataset.connected = 'true';
+                node.dataset.connected = 'true';
+
+                connections.push(activeWire.color);
+                activeWire = null;
+
+                if (connections.length === colors.length) {
+                    completeWiresGame();
+                }
+            } else {
+                activeWire.line.remove();
+                activeWire = null;
+            }
+        }
+
+
+        // ==========================================
+        // 4. ПЕРЕХОД К ГЕОМЕТРИЯ РАННЕР (ИГРА 3)
+        // ==========================================
+        function completeWiresGame() {
+            activeGamePhase = 3;
+            document.getElementById('wires-status').textContent = '⚡ Готово!';
+            document.getElementById('wires-status').style.color = '#10b981';
+
+            setTimeout(() => {
+                document.getElementById('wires-card').classList.add('fade-out');
+
+                const dashCard = document.getElementById('dash-card');
+                dashCard.classList.add('active-card');
+
+                document.getElementById('dash-lock').style.opacity = '0';
+                document.getElementById('dash-lock').style.visibility = 'hidden';
+                document.getElementById('dash-badge').textContent = 'АКТИВНО';
+
+                initDashGame();
+            }, 500);
+        }
+
+
+        // ==========================================
+        // 5. ИГРА 3: ГЕОМЕТРИЯ РАННЕР
+        // ==========================================
+        const dashCanvas = document.getElementById('dashCanvas');
+        const dCtx = dashCanvas.getContext('2d');
+
+        const CUBE_SIZE = 26;
+        const GROUND_Y = 280;
+        let cameraX = 0;
+        let dashSpeed = 4.2;
+
+        let player = {
+            x: 50,
+            y: GROUND_Y - CUBE_SIZE,
+            vy: 0,
+            isGrounded: true,
+            rotation: 0
+        };
+
+        const gravity = 0.75;
+        const jumpForce = -12.5;
+
+        // Генерация препятствий на 30 секунд бега (~ 7500 пикселей)
+        const trackLength = 7200;
+        let obstacles = [];
+
+        function initDashGame() {
+            cameraX = 0;
+            player.x = 60;
+            player.y = GROUND_Y - CUBE_SIZE;
+            player.vy = 0;
+            player.isGrounded = true;
+            player.rotation = 0;
+
+            obstacles = [];
+
+            // Карта препятствий (X позиция, Тип, Размеры)
+            const mapData = [
+                { x: 400, type: 'spike' },
+                { x: 650, type: 'block', w: 40, h: 35 },
+                { x: 900, type: 'spike' },
+                { x: 935, type: 'spike' },
+                { x: 1200, type: 'block', w: 70, h: 35 },
+                { x: 1500, type: 'spike' },
+                { x: 1750, type: 'block', w: 40, h: 50 },
+                { x: 1790, type: 'spike' },
+                { x: 2100, type: 'spike' },
+                { x: 2135, type: 'spike' },
+                { x: 2450, type: 'block', w: 90, h: 35 },
+                { x: 2800, type: 'spike' },
+                { x: 3100, type: 'block', w: 40, h: 40 },
+                { x: 3400, type: 'spike' },
+                { x: 3435, type: 'spike' },
+                { x: 3800, type: 'block', w: 100, h: 40 },
+                { x: 4200, type: 'spike' },
+                { x: 4500, type: 'block', w: 40, h: 40 },
+                { x: 4540, type: 'spike' },
+                { x: 4900, type: 'spike' },
+                { x: 4935, type: 'spike' },
+                { x: 5300, type: 'block', w: 80, h: 40 },
+                { x: 5700, type: 'spike' },
+                { x: 6000, type: 'block', w: 50, h: 50 },
+                { x: 6400, type: 'spike' },
+                { x: 6435, type: 'spike' },
+                { x: 6800, type: 'finish' } // Зелёный портал-выход!
+            ];
+
+            mapData.forEach(item => {
+                if (item.type === 'spike') {
+                    obstacles.push({
+                        type: 'spike',
+                        x: item.x,
+                        y: GROUND_Y,
+                        w: 30,
+                        h: 30
+                    });
+                } else if (item.type === 'block') {
+                    obstacles.push({
+                        type: 'block',
+                        x: item.x,
+                        y: GROUND_Y - (item.h || 35),
+                        w: item.w || 40,
+                        h: item.h || 35
+                    });
+                } else if (item.type === 'finish') {
+                    obstacles.push({
+                        type: 'finish',
+                        x: item.x,
+                        y: GROUND_Y - 90,
+                        w: 40,
+                        h: 90
+                    });
+                }
+            });
+        }
+
+        function triggerDashJump() {
+            if (player.isGrounded) {
+                player.vy = jumpForce;
+                player.isGrounded = false;
+            }
+        }
+
+        dashCanvas.addEventListener('mousedown', () => {
+            if (gameState === 'PLAYING' && activeGamePhase === 3) {
+                triggerDashJump();
+            }
+        });
+
+        function updateDashGame() {
+            // Плавное движение вправо
+            cameraX += dashSpeed;
+            player.x = cameraX + 60;
+
+            // Физика гравитации
+            player.vy += gravity;
+            player.y += player.vy;
+
+            // Вращение в воздухе
+            if (!player.isGrounded) {
+                player.rotation += 0.15;
+            } else {
+                player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
+            }
+
+            // Коллизия с землей
+            if (player.y >= GROUND_Y - CUBE_SIZE) {
+                player.y = GROUND_Y - CUBE_SIZE;
+                player.vy = 0;
+                player.isGrounded = true;
+            }
+
+            // ПРОВЕРКА КОЛЛИЗИЙ С ПРЕПЯТСТВИЯМИ
+            for (let obs of obstacles) {
+                // Шип
+                if (obs.type === 'spike') {
+                    if (player.x + CUBE_SIZE - 4 > obs.x && 
+                        player.x + 4 < obs.x + obs.w && 
+                        player.y + CUBE_SIZE > obs.y - obs.h + 6) {
+                        initDashGame(); // Перезапуск уровня при столкновении
+                        return;
+                    }
+                } 
+                // Блок
+                else if (obs.type === 'block') {
+                    if (player.x + CUBE_SIZE > obs.x && player.x < obs.x + obs.w) {
+                        // Посадка сверху на блок
+                        if (player.y + CUBE_SIZE >= obs.y && player.y + CUBE_SIZE <= obs.y + 12 && player.vy >= 0) {
+                            player.y = obs.y - CUBE_SIZE;
+                            player.vy = 0;
+                            player.isGrounded = true;
+                        } 
+                        // Врезался в бок блока
+                        else if (player.y + CUBE_SIZE > obs.y + 5) {
+                            initDashGame();
+                            return;
+                        }
+                    }
+                }
+                // Зеленый Финиш
+                else if (obs.type === 'finish') {
+                    if (player.x + CUBE_SIZE >= obs.x) {
+                        gameState = 'VICTORY';
+                        stopTimer();
+                        setTimeout(() => {
+                            victoryModal.classList.add('show');
+                        }, 300);
+                        return;
+                    }
+                }
+            }
+        }
+
+        function renderDashGame() {
+            dCtx.fillStyle = '#090d16';
+            dCtx.fillRect(0, 0, dashCanvas.width, dashCanvas.height);
+
+            // Земля
+            dCtx.fillStyle = '#1e293b';
+            dCtx.fillRect(0, GROUND_Y, dashCanvas.width, dashCanvas.height - GROUND_Y);
+
+            dCtx.strokeStyle = '#a855f7';
+            dCtx.lineWidth = 3;
+            dCtx.beginPath();
+            dCtx.moveTo(0, GROUND_Y);
+            dCtx.lineTo(dashCanvas.width, GROUND_Y);
+            dCtx.stroke();
+
+            // Фон-сетка (параллакс)
+            dCtx.strokeStyle = 'rgba(168, 85, 247, 0.08)';
+            dCtx.lineWidth = 1;
+            let bgOffset = cameraX % 40;
+            for (let x = -bgOffset; x < dashCanvas.width; x += 40) {
+                dCtx.beginPath(); dCtx.moveTo(x, 0); dCtx.lineTo(x, GROUND_Y); dCtx.stroke();
+            }
+
+            // Отрисовка препятствий
+            obstacles.forEach(obs => {
+                let screenX = obs.x - cameraX;
+                if (screenX > -100 && screenX < dashCanvas.width + 100) {
+                    if (obs.type === 'spike') {
+                        dCtx.fillStyle = '#ef4444';
+                        dCtx.shadowColor = '#ef4444';
+                        dCtx.shadowBlur = 8;
+                        dCtx.beginPath();
+                        dCtx.moveTo(screenX, obs.y);
+                        dCtx.lineTo(screenX + obs.w / 2, obs.y - obs.h);
+                        dCtx.lineTo(screenX + obs.w, obs.y);
+                        dCtx.closePath();
+                        dCtx.fill();
+                        dCtx.shadowBlur = 0;
+                    } else if (obs.type === 'block') {
+                        dCtx.fillStyle = '#334155';
+                        dCtx.strokeStyle = '#c084fc';
+                        dCtx.lineWidth = 2;
+                        dCtx.fillRect(screenX, obs.y, obs.w, obs.h);
+                        dCtx.strokeRect(screenX, obs.y, obs.w, obs.h);
+                    } else if (obs.type === 'finish') {
+                        // Зеленый портал
+                        dCtx.fillStyle = '#10b981';
+                        dCtx.shadowColor = '#10b981';
+                        dCtx.shadowBlur = 15;
+                        dCtx.fillRect(screenX, obs.y, obs.w, obs.h);
+                        dCtx.shadowBlur = 0;
+                        
+                        dCtx.fillStyle = '#ffffff';
+                        dCtx.font = 'bold 12px sans-serif';
+                        dCtx.fillText('GOAL', screenX + 3, obs.y + 50);
+                    }
+                }
+            });
+
+            // Отрисовка кубика (Игрока)
+            let screenPlayerX = player.x - cameraX;
+            dCtx.save();
+            dCtx.translate(screenPlayerX + CUBE_SIZE / 2, player.y + CUBE_SIZE / 2);
+            dCtx.rotate(player.rotation);
+
+            dCtx.fillStyle = '#c084fc';
+            dCtx.shadowColor = '#c084fc';
+            dCtx.shadowBlur = 12;
+            dCtx.fillRect(-CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE, CUBE_SIZE);
+            dCtx.shadowBlur = 0;
+
+            // Глаза кубика
+            dCtx.fillStyle = '#0f172a';
+            dCtx.fillRect(2, -7, 5, 5);
+            dCtx.fillRect(7, -7, 5, 5);
+
+            dCtx.restore();
+
+            // Прогресс бар 30 секунд
+            let progress = Math.min(1, cameraX / trackLength);
+            dCtx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+            dCtx.fillRect(10, 10, dashCanvas.width - 20, 10);
+            dCtx.fillStyle = '#a855f7';
+            dCtx.fillRect(10, 10, (dashCanvas.width - 20) * progress, 10);
+        }
+
+
+        // ==========================================
+        // ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ
+        // ==========================================
+        function gameLoop() {
+            if (gameState === 'PLAYING') {
+                if (activeGamePhase === 1) {
+                    updateSnakeSmooth();
+                    renderSnake();
+                } else if (activeGamePhase === 3) {
+                    updateDashGame();
+                    renderDashGame();
+                }
+            }
+            animFrameId = requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
